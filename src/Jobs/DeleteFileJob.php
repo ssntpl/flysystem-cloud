@@ -19,14 +19,16 @@ class DeleteFileJob implements ShouldQueue//, ShouldBeUnique
 
     protected $path;
     protected $fromdisk;
+    protected $forceDelete;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($path, $fromDisk)
+    public function __construct($path, $fromDisk, $forceDelete = false)
     {
         $this->path = $path;
         $this->fromdisk = $fromDisk;
+        $this->forceDelete = $forceDelete;
     }
 
     /**
@@ -36,7 +38,7 @@ class DeleteFileJob implements ShouldQueue//, ShouldBeUnique
      */
     public function handle()
     {
-        CloudStorageAdapter::deleteFromDisk($this->path, $this->fromdisk);
+        CloudStorageAdapter::deleteFromDisk($this->path, $this->fromdisk, $this->forceDelete);
     }
 
     /**

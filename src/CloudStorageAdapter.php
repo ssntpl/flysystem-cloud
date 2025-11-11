@@ -138,21 +138,23 @@ class CloudStorageAdapter implements Filesystem
         return $res;
     }
 
-    public static function deleteFromDisk($path, $fromDisk)
+    public static function deleteFromDisk($path, $fromDisk, $forceDelete = false)
     {
         if (is_string($fromDisk)) {
             $fromDisk = config("filesystems.disks")[$fromDisk] ?? [];
         }
 
-        $isExists = false;        
-        $config = config("filesystems.disks.".Storage::getDefaultDriver()) ?? [];
-        $disks = self::getDisks($config);
-        foreach ($disks as $disk) {
-            if ($disk === $fromDisk) {
-                continue;
+        $isExists = $forceDelete;    
+        if(! $isExists) {
+            $config = config("filesystems.disks.".Storage::getDefaultDriver()) ?? [];
+            $disks = self::getDisks($config);
+            foreach ($disks as $disk) {
+                if ($disk === $fromDisk) {
+                    continue;
+                }
+                $isExists = self::checkExistance($disk, $path);
+                if ($isExists) break;
             }
-            $isExists = self::checkExistance($disk, $path);
-            if ($isExists) break;
         }
 
         if ($isExists && self::checkExistance($fromDisk, $path)){
@@ -183,7 +185,10 @@ class CloudStorageAdapter implements Filesystem
             }
             return Storage::build($disk)->exists($path);
         } catch (\Throwable $exception) {
-            Log::error("Unable to check file existence on ".$disk);
+            Log::error("Unable to check file existence", [
+                'disk' => $disk,
+                'error' => $exception->getMessage(),
+            ]);
             return false;
         }
     }
@@ -402,7 +407,7 @@ class CloudStorageAdapter implements Filesystem
     public function delete($paths)
     {        
         foreach ($this->writeDisks as $disk) {
-            DeleteFileJob::dispatch($paths, $disk)->onConnection($this->connection)->onQueue($this->queue);
+            DeleteFileJob::dispatch($paths, $disk, true)->onConnection($this->connection)->onQueue($this->queue);
         }
         return true;
     }
